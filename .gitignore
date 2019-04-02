@@ -1,0 +1,5 @@
+*.py~
+.gitignore~
+.DS_Store
+README.md~
+README.org~

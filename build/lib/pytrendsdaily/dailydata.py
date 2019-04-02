@@ -1,0 +1,123 @@
+from datetime import date, timedelta
+from functools import partial
+from time import sleep
+
+from pytrends.request import TrendReq
+from pytrends.exceptions import ResponseError
+import pandas as pd
+
+
+def getLastDateOfMonth(year: int, month: int) -> date:
+    """Given a year and a month returns an instance of the datetime.date class
+    containing the last day of the corresponding month.
+
+    Source: https://stackoverflow.com/a/43088/1445572
+    """
+    if month == 12:
+        # last day of year is always 31st
+        return date(year, month, 31)
+    else:
+        # go to the next month 1st day, and move back 1 day
+        return date(year, month + 1, 1) - timedelta(days=1)
+
+
+def getTimeframe(start: date, stop: date) -> str:
+    """Given two dates, returns a string representing the interval between the
+    dates. This is string is used to retrieve data for a specific time frame
+    from Google Trends.
+    """
+    return f"{start.strftime('%Y-%m-%d')} {stop.strftime('%Y-%m-%d')}"
+
+
+def _fetchData(pytrends, build_payload, timeframe: str) -> pd.DataFrame:
+    """Attempts to fecth data and retries in case of a ResponseError."""
+    attempts, fetched = 0, False
+    while not fetched:
+        try:
+            build_payload(timeframe=timeframe)
+        except ResponseError as err:
+            print(err)
+            print(f'Trying again in {60 + 5*attempts} seconds.')
+            sleep(60 + 5*attempts)
+            attempts += 1
+        else:
+            fetched = True
+    return pytrends.interest_over_time()
+
+
+def getDailyData(word: str,
+                 start_year: int = 2007,
+                 stop_year: int = 2018,
+                 verbose: bool = True,
+                 wait_time: float = 5.0) -> pd.DataFrame:
+    """Given a word, fetches daily search volume data from Google Trends and
+    returns results in a pandas DataFrame.
+
+    Details: Due to the way Google Trends scales and returns data, special
+    care needs to be taken to make the daily data comparable over different
+    months. To do that, we download daily data on a month by month basis,
+    and also monthly data. The monthly data is downloaded in one go, so that
+    the monthly values are comparable amongst themselves and can be used to
+    scale the daily data. The daily data is scaled by multiplying the daily
+    value by the monthly search volume divided by 100.
+    For a more detailed explanation see http://bit.ly/trendsscaling
+
+    Args:
+        word (str): Word to fetch daily data for.
+        start_year (int): First year to fetch data for. Starts at the beginning
+            of this year (1st of January).
+        stop_year (int): Last year to fetch data for (inclusive). Stops at the
+            end of this year (31st of December).
+        verbose (bool): If True, then prints the word and current time frame
+            we are fecthing the data for.
+
+    Returns:
+        complete (pd.DataFrame): Contains 4 columns.
+            The column named after the word argument contains the daily search
+            volume already scaled and comparable through time.
+            The column f'{word}_unscaled' is the original daily data fetched
+            month by month, and it is not comparable across different months
+            (but is comparable within a month).
+            The column f'{word}_monthly' contains the original monthly data
+            fetched at once. The values in this column have been backfilled
+            so that there are no NaN present.
+            The column 'scale' contains the scale used to obtain the scaled
+            daily data.
+    """
+
+    # Set up start and stop dates
+    start_date = date(start_year, 1, 1)
+    stop_date = date(stop_year, 12, 31)
+
+    # Start pytrends for US region
+    pytrends = TrendReq(hl='en-US', tz=360)
+    # Initialize build_payload with the word we need data for
+    build_payload = partial(pytrends.build_payload,
+                            kw_list=[word], cat=0, geo='US', gprop='')
+
+    # Obtain monthly data for all months in years [start_year, stop_year]
+    monthly = _fetchData(pytrends, build_payload,
+                         getTimeframe(start_date, stop_date))
+
+    # Get daily data, month by month
+    results = {}
+    # if a timeout or too many requests error occur we need to adjust wait time
+    current = start_date
+    while current < stop_date:
+        lastDateOfMonth = getLastDateOfMonth(current.year, current.month)
+        timeframe = getTimeframe(current, lastDateOfMonth)
+        if verbose:
+            print(f'{word}:{timeframe}')
+        results[current] = _fetchData(pytrends, build_payload, timeframe)
+        current = lastDateOfMonth + timedelta(days=1)
+        sleep(wait_time)  # don't go too fast or Google will send 429s
+
+    daily = pd.concat(results.values()).drop(columns=['isPartial'])
+    complete = daily.join(monthly, lsuffix='_unscaled', rsuffix='_monthly')
+
+    # Scale daily data by monthly weights so the data is comparable
+    complete[f'{word}_monthly'].ffill(inplace=True)  # fill NaN values
+    complete['scale'] = complete[f'{word}_monthly']/100
+    complete[word] = complete[f'{word}_unscaled']*complete.scale
+
+    return complete

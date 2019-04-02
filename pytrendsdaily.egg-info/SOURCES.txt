@@ -1,0 +1,10 @@
+README.md
+setup.py
+pytrendsdaily/__init__.py
+pytrendsdaily/dailydata.py
+pytrendsdaily.egg-info/PKG-INFO
+pytrendsdaily.egg-info/SOURCES.txt
+pytrendsdaily.egg-info/dependency_links.txt
+pytrendsdaily.egg-info/not-zip-safe
+pytrendsdaily.egg-info/requires.txt
+pytrendsdaily.egg-info/top_level.txt

@@ -1,0 +1,11 @@
+* pytrendsdaily
+The [[https://github.com/GeneralMills/pytrends][Pytrends]] package provides an easy way to obtain data from [[https://trends.google.com/trends][Google Trends]]. This package, =pytrendsdaily=, uses the functionality from =Pytrends= to obtain data from Google Trends at the daily frequency, automatically dealing with scaling issues.
+
+** Usage
+The main functionality of this package is available via the function =getDailyData=.
+#+BEGIN_SRC jupyter-python :session py :results output :async yes
+from pytrendsdaily import getDailyData
+
+svi = getDailyData('GOLD PRICES', 2004, 2017)
+#+END_SRC
+The variable =svi= contains a Pandas data frame with the original unscaled search volume index (SVI) from Google Trends, and also the scaled data at the daily frequency.
