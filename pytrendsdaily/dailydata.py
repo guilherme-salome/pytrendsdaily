@@ -48,7 +48,7 @@ def getDailyData(word: str,
     and also monthly data. The monthly data is downloaded in one go, so that
     the monthly values are comparable amongst themselves and can be used to
     scale the daily data. In a given month, the daily data is scaled by multiplying the daily
-    values by the ratio of the monthly series value to monthly average of the daily data.
+    values by the ratio of the monthly series value to the monthly average of the daily data.
     
     Args:
         word (str): Word to fetch daily data for.
