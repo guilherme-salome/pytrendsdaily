@@ -113,5 +113,5 @@ def getDailyData(word: str,
     complete[f'{word}_{geo}_monthly'].ffill(inplace=True)  # fill NaN values
     complete['scale'] = complete[f'{word}_{geo}_monthly']/complete[f'{word}_{geo}_avg']
     complete[f'{word}_{geo}'] = complete[f'{word}_{geo}_unscaled']*complete.scale
-    complete.drop(columns=['isPartial',f'{word}_{geo}_avg'])  #drop monthly average and isPartial
+    complete.drop(columns=['isPartial',f'{word}_{geo}_avg'], inplace=True)  #drop monthly average and isPartial
     return complete
