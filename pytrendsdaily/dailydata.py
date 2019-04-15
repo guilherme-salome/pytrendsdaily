@@ -64,10 +64,10 @@ def getDailyData(word: str,
         complete (pd.DataFrame): Contains 4 columns.
             The column named after the word argument contains the daily search
             volume already scaled and comparable through time.
-            The column f'{word}_unscaled' is the original daily data fetched
+            The column f'{word}_{geo}_unscaled' is the original daily data fetched
             month by month, and it is not comparable across different months
             (but is comparable within a month).
-            The column f'{word}_monthly' contains the original monthly data
+            The column f'{word}_{geo}_monthly' contains the original monthly data
             fetched at once. The values in this column have been backfilled
             so that there are no NaN present.
             The column 'scale' contains the scale used to obtain the scaled
@@ -104,7 +104,7 @@ def getDailyData(word: str,
 
     daily = pd.concat(results.values()).drop(columns=['isPartial'])
     dailyaverage=daily.resample('M').mean() #generate monthly averages
-    dailyaverage.index=dailyaverage.index.values.astype('<M8[M]') #above produces weird dates, so cut them
+    dailyaverage.index=dailyaverage.index.values.astype('<M8[M]') #above produces weird index dates, so cut them
     daily[f'{word}_{geo}_avg']=dailyaverage
     daily[f'{word}_{geo}_avg'].ffill(inplace=True)  #fill in forward
     complete = daily.join(monthly, lsuffix=f'_{geo}_unscaled', rsuffix=f'_{geo}_monthly')
@@ -113,5 +113,5 @@ def getDailyData(word: str,
     complete[f'{word}_{geo}_monthly'].ffill(inplace=True)  # fill NaN values
     complete['scale'] = complete[f'{word}_{geo}_monthly']/complete[f'{word}_{geo}_avg']
     complete[f'{word}_{geo}'] = complete[f'{word}_{geo}_unscaled']*complete.scale
-
+    complete.drop(columns=['isPartial',f'{word}_{geo}_avg'])  #drop monthly average and isPartial
     return complete
