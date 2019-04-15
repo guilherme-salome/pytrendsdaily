@@ -97,7 +97,7 @@ def getDailyData(word: str,
 
     # Obtain monthly data for all months in years [start_year, stop_year]
     monthly = _fetchData(pytrends, build_payload,
-                         getTimeframe(start_date, stop_date))
+                         getTimeframe(date(2004, 1, 1), stop_date))[start_date: stop_date]
 
     # Get daily data, month by month
     results = {}
